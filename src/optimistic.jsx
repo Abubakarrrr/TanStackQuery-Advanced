@@ -1,7 +1,9 @@
+
 import React from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { queryClient } from './main';
 
+//we are optimistic => before saving data to server we are updating ui
 const Optimistic = () => {
     const { data: posts } = useQuery({
         queryKey: ['posts'],
@@ -12,7 +14,7 @@ const Optimistic = () => {
             return response;
         },
     });
-    const { mutate, isError } = useMutation({
+    const { mutate, isError, isPending, variables } = useMutation({
         mutationFn: (newProduct) =>
             fetch('http://localhost:3000/posts', {
                 method: 'POST',
@@ -22,6 +24,7 @@ const Optimistic = () => {
                 },
             }),
         onSuccess: async () => {
+            //means it will be called again
             return await queryClient.invalidateQueries({ queryKey: ['posts'] });
         },
     });
@@ -32,6 +35,10 @@ const Optimistic = () => {
             id: Date.now(),
             title: e.target.elements.title.value,
         };
+        mutate(post);
+    };
+
+    const handleRetry = (post) => {
         mutate(post);
     };
 
@@ -54,7 +61,24 @@ const Optimistic = () => {
                 <div className="flex-1">
                     <h2 className="text-lg font-bold mb-4">Posts:</h2>
                     <ul>
-                        {isError && <p className="text-red-500">Something went wrong</p>}
+                        {isPending && (
+                            <li className="border p-2 mb-4 opacity-40" key={variables.id}>
+                                {variables.title}
+                            </li>
+                        )}
+
+                        {isError && (
+                            <li className="border p-2 mb-4 flex justify-between" key={variables.id}>
+                                <span className="text-red-500">{variables.title}</span>
+                                <button
+                                    className="text-blue-500"
+                                    onClick={() => {
+                                        handleRetry(variables);
+                                    }}>
+                                    Retry
+                                </button>
+                            </li>
+                        )}
 
                         {posts?.map((post) => {
                             return (
